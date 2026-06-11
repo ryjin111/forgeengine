@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MythosForge — Skirmish</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; padding: 24px; background: #0b0f17; color: #e5e7eb; font-family: system-ui, sans-serif; }
+      h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
+      h1 small { color: #9ca3af; font-weight: 400; }
+      .wrap { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+      #game { border: 1px solid #374151; border-radius: 6px; overflow: hidden; line-height: 0; }
+      .controls { margin-top: 12px; display: flex; gap: 8px; }
+      .rules { margin-top: 10px; display: flex; gap: 6px; align-items: center; font-size: 13px; }
+      .rules .hint { color: #6b7280; }
+      button { background: #1f2937; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+      button:hover { background: #374151; }
+      .side { width: 340px; }
+      .status { background: #111827; border: 1px solid #374151; border-radius: 6px; padding: 12px; font-size: 13px; line-height: 1.5; min-height: 64px; }
+      .status .you { color: #60a5fa; } .status .ai { color: #f87171; }
+      .banner { font-size: 20px; font-weight: 700; color: #fbbf24; }
+      h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; margin: 16px 0 6px; }
+      .log { height: 360px; overflow-y: auto; background: #111827; border: 1px solid #374151; border-radius: 6px; padding: 8px; font-family: ui-monospace, monospace; font-size: 12px; }
+      .log .row { padding: 1px 0; border-bottom: 1px solid #1f2937; }
+    </style>
+    <script type="module" crossorigin src="./assets/main-Bt3glqi9.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/scene-BxSYh_fC.js">
+  </head>
+  <body>
+    <h1>MythosForge — Skirmish <small>· human vs agent · same engine, now a game layer</small></h1>
+    <div class="wrap">
+      <div>
+        <div id="game"></div>
+        <div class="controls">
+          <button id="pass">Pass turn</button>
+          <button id="auto">Auto-step (watch AI)</button>
+          <button id="reset">New match</button>
+        </div>
+        <div class="rules">
+          <span>moveRange: <b id="mr">–</b></span>
+          <button id="mrDown">–</button><button id="mrUp">+</button>
+          <span class="hint">(your editable rule — uses your turn)</span>
+        </div>
+      </div>
+      <div class="side">
+        <div id="status" class="status"></div>
+        <h3>Match log</h3>
+        <div id="log" class="log"></div>
+      </div>
+    </div>
+  </body>
+</html>
