@@ -45,6 +45,7 @@ export class BoardScene extends Phaser.Scene {
   private seed = "board-1";
   private selected: string | null = null;
   private units = new Map<string, Unit>();
+  private itemMarkers = new Map<string, Phaser.GameObjects.Container>();
   private highlight!: Phaser.GameObjects.Graphics;
   private busy = false; // lock input while a tick animates
 
@@ -130,15 +131,27 @@ export class BoardScene extends Phaser.Scene {
     }
   }
 
+  private spawnUnit(e: { id: string; owner: string; pos: { x: number; y: number } }): void {
+    const disc = this.add.image(0, 0, "disc").setTint(OWNER_TINT[e.owner] ?? 0x888888);
+    const name = this.add.text(0, -this.cell * 0.02, e.id, { fontSize: "14px", color: "#fff", fontStyle: "bold" }).setOrigin(0.5);
+    const hpText = this.add.text(0, this.cell * 0.26, "", { fontSize: "11px", color: "#fff" }).setOrigin(0.5);
+    const container = this.add.container(this.cx(e.pos.x), this.cy(e.pos.y), [disc, name, hpText]);
+    this.units.set(e.id, { container, hpText, disc });
+  }
+
   private spawnUnits(): void {
     for (const u of this.units.values()) u.container.destroy();
     this.units.clear();
-    for (const e of Object.values(this.match.getState().entities)) {
-      const disc = this.add.image(0, 0, "disc").setTint(OWNER_TINT[e.owner] ?? 0x888888);
-      const name = this.add.text(0, -this.cell * 0.02, e.id, { fontSize: "14px", color: "#fff", fontStyle: "bold" }).setOrigin(0.5);
-      const hpText = this.add.text(0, this.cell * 0.26, "", { fontSize: "11px", color: "#fff" }).setOrigin(0.5);
-      const container = this.add.container(this.cx(e.pos.x), this.cy(e.pos.y), [disc, name, hpText]);
-      this.units.set(e.id, { container, hpText, disc });
+    for (const e of Object.values(this.match.getState().entities)) this.spawnUnit(e);
+
+    // Items (crops/pickups): gold markers on their cells until collected.
+    for (const m of this.itemMarkers.values()) m.destroy();
+    this.itemMarkers.clear();
+    for (const it of this.spec.items ?? []) {
+      const coin = this.add.circle(0, 0, this.cell * 0.18, 0xf5c542).setStrokeStyle(2, 0x8a6d1a);
+      const pts = this.add.text(0, 0, String(it.points), { fontSize: "12px", color: "#3a2d00", fontStyle: "bold" }).setOrigin(0.5);
+      const marker = this.add.container(this.cx(it.pos.x), this.cy(it.pos.y), [coin, pts]);
+      this.itemMarkers.set(it.id, marker);
     }
     // Re-skin from any textures already loaded (e.g. after "New match"), without re-fetching.
     for (const key of Object.keys(this.spec.assets)) {
@@ -275,21 +288,36 @@ export class BoardScene extends Phaser.Scene {
   // --- view sync ---
   private refresh(): void {
     const s = this.match.getState();
-    // hp + alive
+    // hp + alive — and LATE SPAWNS (wave reinforcements) get a sprite on arrival.
     for (const e of Object.values(s.entities)) {
-      const u = this.units.get(e.id);
-      if (!u) continue;
+      if (!this.units.has(e.id)) this.spawnUnit(e);
+      const u = this.units.get(e.id)!;
       u.hpText.setText(e.alive ? `hp ${fixed.toInt(e.stats.hp ?? fixed.fromInt(0))}` : "");
       u.container.setPosition(this.cx(e.pos.x), this.cy(e.pos.y));
       if (!e.alive) u.container.setAlpha(0.25);
     }
+    // Collected items leave the board.
+    for (const [id, marker] of this.itemMarkers) {
+      if (s.items[id]) {
+        marker.destroy();
+        this.itemMarkers.delete(id);
+      }
+    }
     this.refreshTints();
     this.refreshHighlights();
     this.mrEl.textContent = String(s.ruleParams.moveRange ?? "–");
+    // Score line whenever the game has a score source (items/kills/zones).
+    const scored =
+      (this.spec.items?.length ?? 0) > 0 ||
+      (this.spec.rules.params.killScore ?? 0) > 0 ||
+      this.spec.winConditions.some((c) => c.kind === "capture_point" || c.kind === "score_target");
+    const scoreLine = scored
+      ? `<br/>score: ${this.spec.actors.map((a) => `${a.id} <b>${s.scores[a.id] ?? 0}</b>`).join(" · ")}`
+      : "";
     const over = s.winner !== null;
     this.statusEl.innerHTML = over
       ? `<div class="banner">${s.winner === "draw" ? "Draw." : `${s.winner} wins!`}</div>`
-      : `<div>tick <b>${s.tick}</b> · attackRange <b>${s.ruleParams.attackRange}</b><br/>
+      : `<div>tick <b>${s.tick}</b> · attackRange <b>${s.ruleParams.attackRange}</b>${scoreLine}<br/>
          <span class="you">you = human (blue)</span> · <span class="ai">AI = agent (red)</span><br/>
          click your unit, then a green tile to move or a ringed enemy to attack</div>`;
   }
