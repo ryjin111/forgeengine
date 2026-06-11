@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 // is a host around the same board, not a second renderer. `public/.well-known/farcaster.json`
 // is copied to the deploy root by Vite's publicDir handling.
 export default defineConfig({
+  base: "./", // relative asset paths — works at a domain root AND under a sub-path (GitHub Pages)
   build: {
     rollupOptions: {
       input: {
