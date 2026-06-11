@@ -29,6 +29,7 @@ export const IMPLEMENTED_WIN_KINDS: readonly string[] = [
   "reach_cell",
   "survive_turns",
   "score_target",
+  "capture_point",
 ];
 
 /** Reserved in the spec format but NOT yet runnable — rejected by the gate. */

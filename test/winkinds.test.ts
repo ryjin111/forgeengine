@@ -9,7 +9,9 @@ import { readFileSync } from "node:fs";
 import { gateSpec } from "../src/builder/gate.ts";
 import { IMPLEMENTED_WIN_KINDS } from "../src/builder/vocabulary.ts";
 import { initialState, Match, verifyReplay } from "../src/core/engine.ts";
-import { evaluateWin, validateSpec } from "../src/core/validate.ts";
+import { accrueCapturePoints, evaluateWin, validateSpec } from "../src/core/validate.ts";
+import { pickObjectiveAction } from "../src/client/agent.ts";
+import { runMatch } from "../src/arena/run.ts";
 import { skirmishSpec } from "../src/skirmish/spec.ts";
 import type { GameSpec } from "../src/core/types.ts";
 
@@ -72,6 +74,19 @@ test("vocabulary promotion pin: every IMPLEMENTED kind is genuinely evaluated", 
       const s = initialState(spec);
       s.scores.human = 1;
       assert.equal(evaluateWin(s, spec), "human", kind);
+    } else if (kind === "capture_point") {
+      const spec = withWin(skirmishSpec, [
+        { id: "w", kind: "capture_point", params: { x: 3, y: 3, perTick: 1, target: 1 } },
+      ]);
+      const s = initialState(spec);
+      s.scores.agent = 1;
+      assert.equal(evaluateWin(s, spec), "agent", kind);
+      // And the accrual system genuinely awards points for standing on the zone.
+      const s2 = initialState(spec);
+      s2.entities.h1 = { ...s2.entities.h1, pos: { x: 3, y: 3 } };
+      const acc = accrueCapturePoints(s2, spec);
+      assert.notEqual(acc, null, kind);
+      assert.equal(acc!.scores.human, 1, kind);
     } else {
       assert.fail(`IMPLEMENTED kind "${kind}" has no evaluation pin — add one before promoting it`);
     }
@@ -191,6 +206,65 @@ test("validateSpec rejects malformed/unwinnable score_target specs", () => {
 test("gate accepts First Blood (score_target game end to end)", async () => {
   const r = await gateSpec(structuredClone(firstBlood));
   assert.equal(r.ok, true, !r.ok ? `${r.stage}: ${r.errors.join("; ")}` : "");
+});
+
+// ---------- capture_point: per-tick system score source --------------------------
+
+const kingSpec = JSON.parse(readFileSync("examples/king-of-the-forge.json", "utf8")) as GameSpec;
+
+test("holding the zone accrues points each tick and wins at the target (real Match)", () => {
+  const m = new Match(kingSpec, "hill-seed");
+  // Walk h1 to the hill (0,2) -> (2,2) -> (4,2) with moveRange 2.
+  m.submit({ type: "move", actor: "human", params: { entity: "h1", x: 2, y: 2 } });
+  m.tick();
+  m.submit({ type: "move", actor: "human", params: { entity: "h1", x: 4, y: 2 } });
+  m.tick();
+  const before = m.getState().scores.human;
+  // Hold: empty ticks accrue perTick=1 each.
+  for (let i = 0; i < 10 && m.getState().winner === null; i++) m.tick();
+  const s = m.getState();
+  assert.ok(s.scores.human > before);
+  assert.equal(s.winner, "human"); // reached target 6 by holding
+  const v = verifyReplay(kingSpec, m.transcript(), s);
+  assert.equal(v.ok, true); // system accrual replays identically
+});
+
+test("an empty zone accrues nothing", () => {
+  const m = new Match(kingSpec, "idle-seed");
+  for (let i = 0; i < 5; i++) m.tick();
+  assert.deepEqual(m.getState().scores, { human: 0, agent: 0 });
+});
+
+test("validateSpec rejects malformed capture_point zones", () => {
+  const oob = withWin(kingSpec, [
+    { id: "w", kind: "capture_point", params: { x: 99, y: 2, perTick: 1, target: 5 } },
+  ]);
+  assert.equal(validateSpec(oob).ok, false);
+  const badRate = withWin(kingSpec, [
+    { id: "w", kind: "capture_point", params: { x: 4, y: 2, perTick: 0, target: 5 } },
+  ]);
+  assert.equal(validateSpec(badRate).ok, false);
+  const noTarget = withWin(kingSpec, [
+    { id: "w", kind: "capture_point", params: { x: 4, y: 2, perTick: 1 } },
+  ]);
+  assert.equal(validateSpec(noTarget).ok, false);
+});
+
+test("gate accepts King of the Forge and the goal-seeker EXERCISES the genre", async () => {
+  const r = await gateSpec(structuredClone(kingSpec));
+  assert.equal(r.ok, true, !r.ok ? `${r.stage}: ${r.errors.join("; ")}` : "");
+
+  // Direct run with the objective policy: the win must come from capture points
+  // (scores at target), proving the playability sim plays the hill, not a brawl.
+  const controllers = {
+    human: (s: Parameters<typeof pickObjectiveAction>[0], sp: GameSpec, a: string) =>
+      pickObjectiveAction(s, sp, a),
+    agent: (s: Parameters<typeof pickObjectiveAction>[0], sp: GameSpec, a: string) =>
+      pickObjectiveAction(s, sp, a),
+  };
+  const result = runMatch(structuredClone(kingSpec), "exercise-seed", controllers);
+  assert.notEqual(result.winner, null);
+  assert.equal(result.replayOk, true);
 });
 
 test("gate accepts a survival game", async () => {

@@ -1,0 +1,47 @@
+{
+  "specVersion": 1,
+  "meta": {
+    "name": "King of the Forge",
+    "authors": [
+      "AI-generated (composed from the ForgeEngine vocabulary, validated by the safety gate)"
+    ]
+  },
+  "map": {
+    "width": 9,
+    "height": 5
+  },
+  "entityTypes": {
+    "champion": {
+      "stats": { "hp": 327680, "attack": 131072 },
+      "assetKey": "champion_sprite"
+    }
+  },
+  "entities": [
+    { "id": "h1", "type": "champion", "owner": "human", "pos": { "x": 0, "y": 2 } },
+    { "id": "a1", "type": "champion", "owner": "agent", "pos": { "x": 8, "y": 2 } }
+  ],
+  "actors": [
+    { "id": "human", "kind": "human" },
+    { "id": "agent", "kind": "agent" }
+  ],
+  "rules": {
+    "allowedActions": ["move", "attack", "pass"],
+    "params": {
+      "moveRange": 2,
+      "attackRange": 1,
+      "attackVariance": 1
+    }
+  },
+  "assets": {
+    "champion_sprite": { "uri": "mythosforge://assets/champion_sprite", "kind": "sprite" }
+  },
+  "winConditions": [
+    { "id": "the_hill", "kind": "capture_point", "params": { "x": 4, "y": 2, "perTick": 1, "target": 6 } },
+    { "id": "wipeout", "kind": "eliminate_all" }
+  ],
+  "turnModel": {
+    "actionsPerActorPerTurn": 1,
+    "resolution": "sequential",
+    "order": ["human", "agent"]
+  }
+}

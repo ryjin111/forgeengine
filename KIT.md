@@ -59,7 +59,9 @@ The Ludii-style "small Lego set". Compose ONLY from it:
   first unit on the goal cell; unreachable goals are rejected statically), `survive_turns`
   (survival — sole survivor at the deadline wins, several = draw), `score_target`
   (deathmatch/points — kills award the `killScore` rule param; unachievable or
-  editable-to-unwinnable targets are rejected statically). `custom` is reserved —
+  editable-to-unwinnable targets are rejected statically), `capture_point`
+  (king-of-the-hill — holding the zone at {x,y} awards {perTick} points each tick,
+  first to {target} wins; unreachable zones rejected statically). `custom` is reserved —
   the gate REJECTS reserved kinds until the engine implements them (no silently-unwinnable games).
 - **turn models:** `simultaneous` | `sequential`, N actions per actor per turn
 - **limits (gate-enforced):** map ≤ 1024 cells, ≤ 64 entities, ≤ 8 actors

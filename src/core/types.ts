@@ -120,8 +120,12 @@ export interface WinCondition {
    *    several (or zero) survivors = draw (survival/endurance).
    *  - score_target: first actor (spec.actors order breaks same-tick ties) whose score
    *    reaches params {target} wins (deathmatch/points — kills × killScore rule param).
+   *  - capture_point: a zone at params {x, y} awards {perTick} points each tick to the
+   *    sole actor with a living unit on it (system mechanic in resolveTick); first to
+   *    {target} points wins (king-of-the-hill — also satisfied by kill points if both
+   *    sources are in play).
    *  - custom: reserved, not implemented — the kit gate rejects it. */
-  kind: "eliminate_all" | "reach_cell" | "survive_turns" | "score_target" | "custom";
+  kind: "eliminate_all" | "reach_cell" | "survive_turns" | "score_target" | "capture_point" | "custom";
   params?: Record<string, number>;
 }
 

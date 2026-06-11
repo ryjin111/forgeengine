@@ -17,7 +17,7 @@ import { ENGINE_VERSION, SYSTEM_SEQ } from "./types.ts";
 import { canonicalize, hashCanonical } from "./canonicalize.ts";
 import { makePrng, type Prng } from "./prng.ts";
 import { step } from "./step.ts";
-import { evaluateWin } from "./validate.ts";
+import { accrueCapturePoints, evaluateWin } from "./validate.ts";
 
 /** A submitted-but-not-yet-resolved action, stamped with its order + tick assignment. */
 interface PendingAction {
@@ -53,8 +53,20 @@ function resolveTick(
   }
   // Intrinsic per-tick mechanics run HERE (after this tick's actions), as a system entry
   // (action: null, seq: SYSTEM_SEQ) so live and replay share one code path across the full
-  // range. Win-eval is the first; status/regen would slot in alongside.
+  // range. Capture-zone scoring runs first, then win-eval sees the fresh scores.
   // TODO(gameplay): per-tick status/regen, and resolve simultaneous adjacency if added.
+  if (s.winner === null) {
+    const cap = accrueCapturePoints(s, spec);
+    if (cap) {
+      s = { ...s, scores: cap.scores };
+      entries.push({
+        seq: SYSTEM_SEQ,
+        tick,
+        action: null,
+        events: cap.gains.map((g) => ({ kind: "scored" as const, ...g })),
+      });
+    }
+  }
   if (s.winner === null) {
     const winner = evaluateWin(s, spec);
     if (winner !== null) {

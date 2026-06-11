@@ -34,3 +34,58 @@ export function pickAgentAction(state: State, spec: GameSpec, actor: string): Ac
 
   return { type: "pass", actor, params: {} };
 }
+
+/** The objective cell of a spec's first reach_cell / capture_point condition, if any. */
+export function objectiveCell(spec: GameSpec): { x: number; y: number } | null {
+  for (const c of spec.winConditions) {
+    if ((c.kind === "reach_cell" || c.kind === "capture_point") && c.params) {
+      const { x, y } = c.params;
+      if (x !== undefined && y !== undefined) return { x, y };
+    }
+  }
+  return null;
+}
+
+/**
+ * Objective-seeking policy: heads for the spec's goal/zone cell instead of
+ * brawling, so objective genres (racing, king-of-the-hill) are actually
+ * EXERCISED in headless play. Deterministic, no RNG:
+ *  1) if a unit already holds the objective, hold it (pass) — attacks only if
+ *     an enemy is in reach of the holder's cell;
+ *  2) else move minimizing Manhattan distance to the objective;
+ *  3) no objective in the spec → fall back to the brawler policy.
+ */
+export function pickObjectiveAction(state: State, spec: GameSpec, actor: string): Action {
+  const goal = objectiveCell(spec);
+  if (!goal) return pickAgentAction(state, spec, actor);
+
+  const acts = legalActions(state, spec, actor);
+  if (acts.length === 0) return { type: "pass", actor, params: {} };
+
+  const mine = Object.values(state.entities).filter((e) => e.alive && e.owner === actor);
+  const holder = mine.find((e) => e.pos.x === goal.x && e.pos.y === goal.y);
+  if (holder) {
+    // Defend the point: attack if able, otherwise hold.
+    const attacks = acts.filter((a) => a.type === "attack" && a.params.entity === holder.id);
+    if (attacks.length) {
+      attacks.sort((a, b) => String(a.params.target).localeCompare(String(b.params.target)));
+      return attacks[0]!;
+    }
+    const pass = acts.find((a) => a.type === "pass");
+    if (pass) return pass;
+  }
+
+  const moves = acts.filter((a) => a.type === "move");
+  if (moves.length) {
+    const dist = (x: number, y: number) => Math.abs(goal.x - x) + Math.abs(goal.y - y);
+    moves.sort((a, b) => {
+      const da = dist(Number(a.params.x), Number(a.params.y));
+      const db = dist(Number(b.params.x), Number(b.params.y));
+      if (da !== db) return da - db;
+      return JSON.stringify(a.params).localeCompare(JSON.stringify(b.params));
+    });
+    return moves[0]!;
+  }
+
+  return pickAgentAction(state, spec, actor);
+}

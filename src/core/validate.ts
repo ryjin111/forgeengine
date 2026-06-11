@@ -106,6 +106,28 @@ export function validateSpec(spec: GameSpec): ValidationResult {
         );
       }
     }
+    if (cond.kind === "capture_point") {
+      const cx = cond.params?.x;
+      const cy = cond.params?.y;
+      const perTick = cond.params?.perTick;
+      const target = cond.params?.target;
+      if (
+        cx === undefined || cy === undefined ||
+        !Number.isInteger(cx) || !Number.isInteger(cy)
+      ) {
+        errors.push(`winConditions.${cond.id}: capture_point requires integer params x, y`);
+      } else if (!inBounds(spec, cx, cy)) {
+        errors.push(`winConditions.${cond.id}: zone (${cx},${cy}) is out of bounds or blocked`);
+      } else if (!goalReachable(spec, cx, cy)) {
+        errors.push(`winConditions.${cond.id}: zone (${cx},${cy}) is unreachable from every starting unit`);
+      }
+      if (perTick === undefined || !Number.isInteger(perTick) || perTick < 1) {
+        errors.push(`winConditions.${cond.id}: capture_point requires integer params perTick >= 1`);
+      }
+      if (target === undefined || !Number.isInteger(target) || target < 1) {
+        errors.push(`winConditions.${cond.id}: capture_point requires integer params target >= 1`);
+      }
+    }
   }
   return { ok: errors.length === 0, errors };
 }
@@ -237,6 +259,41 @@ export function legalityReason(state: State, spec: GameSpec, action: Action): st
 }
 
 // ---------------------------------------------------------------------------
+// Per-tick SYSTEM mechanics — run inside the engine's resolveTick (action: null,
+// SYSTEM_SEQ) so live and replay share one code path. All pure; no RNG.
+// ---------------------------------------------------------------------------
+
+/**
+ * capture_point accrual: each capture zone awards perTick points to the sole
+ * actor with a living unit standing on it. Pure function of (state, spec) —
+ * returns null when nothing accrued this tick.
+ */
+export function accrueCapturePoints(
+  state: State,
+  spec: GameSpec,
+): { scores: State["scores"]; gains: Array<{ actor: string; points: number; total: number }> } | null {
+  let scores: State["scores"] | null = null;
+  const gains: Array<{ actor: string; points: number; total: number }> = [];
+  for (const cond of spec.winConditions) {
+    if (cond.kind !== "capture_point") continue;
+    const cx = cond.params?.x;
+    const cy = cond.params?.y;
+    const perTick = cond.params?.perTick;
+    if (cx === undefined || cy === undefined || perTick === undefined || perTick < 1) continue;
+    // The occupant: a living unit on the zone (cells hold one unit, so "sole" is structural).
+    for (const e of Object.values(state.entities)) {
+      if (e.alive && e.pos.x === cx && e.pos.y === cy) {
+        scores = scores ?? { ...state.scores };
+        scores[e.owner] = (scores[e.owner] ?? 0) + perTick;
+        gains.push({ actor: e.owner, points: perTick, total: scores[e.owner]! });
+        break;
+      }
+    }
+  }
+  return scores ? { scores, gains } : null;
+}
+
+// ---------------------------------------------------------------------------
 // Win-condition evaluation — an intrinsic PER-TICK mechanic (runs inside the engine's
 // resolveTick, not via an action). Pure; no RNG. Returns the winner, "draw", or null
 // if the match is ongoing.
@@ -280,7 +337,7 @@ export function evaluateWin(state: State, spec: GameSpec): ActorIdResult {
         return "draw"; // several (or zero) made it to the deadline — endurance draw
       }
     }
-    if (cond.kind === "score_target") {
+    if (cond.kind === "score_target" || cond.kind === "capture_point") {
       // First actor (in spec.actors order — the deterministic tie-break for
       // same-tick finishes) whose score has reached the target wins.
       const target = cond.params?.target;
