@@ -60,6 +60,17 @@ async function resolveSpec(): Promise<GameSpec> {
 async function boot(): Promise<void> {
   const spec = await resolveSpec();
 
+  // Showcase polish: the page introduces the LOADED game, not the built-in one.
+  document.title = `ForgeEngine — ${spec.meta.name}`;
+  const h1 = document.querySelector("h1");
+  if (h1) {
+    h1.innerHTML = "";
+    h1.append(`ForgeEngine — ${spec.meta.name} `);
+    const small = document.createElement("small");
+    small.textContent = "· human vs agent · gate-validated, replay-verifiable";
+    h1.append(small);
+  }
+
   // Phase 2 asset provider. Default = procedural (works with zero keys). To use real generated
   // art, swap to the MythosForge image service once the image-service endpoint + auth are configured:
   //   const provider = mythosforgeProvider({ endpoint: import.meta.env.VITE_MF_IMAGE_URL });
