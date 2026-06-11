@@ -53,17 +53,22 @@ enforced **host/server-side**: a client can fake its own FID or `claimed` map, s
 fail-closed mapping here can't be the authority for shared matches. That + generalizing the
 hardcoded local seat above are the same multi-human slice.
 
-## What the maintainer needs to provide to go live (gated, not buildable by an agent)
-1. **A public domain + hosting.** Deploy `dist/` to a public HTTPS host; note the domain.
-2. **Replace the placeholder `https://mythosforge.example` URLs** in:
-   - `miniapp.html` (both embed metas)
-   - `public/.well-known/farcaster.json`
-   with the real domain.
-3. **`accountAssociation`** in `farcaster.json` is empty on purpose — it must be **signed with
-   the maintainer's Farcaster custody key for the real domain** (generate it in the Warpcast/Farcaster
-   developer "Manifest" tool). An agent cannot produce this (needs the key + final domain).
-4. **Card art** (`preview.png` 3:2, `icon.png`, `splash.png`) — add to `public/` and point the
-   URLs at them. Optional for local testing; needed for a polished share card.
+Current hosting: the kit is published on **GitHub Pages** (`https://ryjin111.github.io/forgeengine/`),
+and the Mini App embed in `miniapp.html` is **already wired to launch the bundled demo**
+(`miniapp.html?spec=demo.json` → "The Forge Gauntlet"). The **web** showcase works today — share
+`https://ryjin111.github.io/forgeengine/?spec=demo.json` and it's playable in a browser. The
+**in-feed** Mini App embed needs the remaining maintainer-only steps below.
+
+## What the maintainer needs to provide for the IN-FEED Mini App (gated, not buildable by an agent)
+1. **Manifest at the domain ROOT.** Farcaster fetches `/.well-known/farcaster.json` at the domain
+   root — a GitHub Pages *project* site (`ryjin111.github.io/forgeengine/`) can't serve the root, so
+   in-feed launch needs either a **custom domain** or a **user/org Pages site**. The same `dist/`
+   deploys there unchanged; then point the embed origin at it (the demo `?spec=demo.json` carries over).
+2. **`accountAssociation`** in `farcaster.json` is empty on purpose — it must be **signed with
+   the maintainer's Farcaster custody key for the serving domain** (Warpcast/Farcaster developer
+   "Manifest" tool). An agent cannot produce this (needs the key + final domain).
+3. **Card art** (`preview.png` 3:2, `icon.png`, `splash.png`) — add to `public/` (the embed already
+   references them at the host). Needed for the card to render in-feed; optional for the web demo.
 5. **Image service** (optional): the public shell uses the keyless procedural provider only.
    The real MythosForge image service stays unwired until the maintainer supplies the endpoint + key via
    env (never baked into the public build).

@@ -3,21 +3,23 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>MythosForge — Skirmish (Farcaster)</title>
+    <title>ForgeEngine — The Forge Gauntlet (Farcaster)</title>
 
     <!--
-      Farcaster Mini App embed card. This makes the page render as a rich, launchable card when
-      shared in a cast. The URLs below use a placeholder `.example` domain — the maintainer swaps them for
-      the real deployed domain (see FARCASTER.md). No secrets here; this is public-build-safe.
-      `fc:miniapp` is the current key; `fc:frame` is kept for older clients.
+      Farcaster Mini App embed card. Renders this page as a rich, launchable card when shared in a
+      cast: tapping it opens the bundled demo game (The Forge Gauntlet) in-feed via the gated
+      `?spec=` door. URLs point at the published GitHub Pages host; if a custom domain is set, swap
+      the origin (see FARCASTER.md). `fc:miniapp` is the current key; `fc:frame` is for older clients.
+      NOTE: in-feed launch still requires the maintainer's go-live — a signed accountAssociation for
+      the serving domain + the card art (preview/splash png) — see FARCASTER.md. No secrets here.
     -->
     <meta
       name="fc:miniapp"
-      content='{"version":"1","imageUrl":"https://mythosforge.example/preview.png","button":{"title":"▶ Watch a match","action":{"type":"launch_miniapp","name":"MythosForge Skirmish","url":"https://mythosforge.example/miniapp.html","splashImageUrl":"https://mythosforge.example/splash.png","splashBackgroundColor":"#0b0f17"}}}'
+      content='{"version":"1","imageUrl":"https://ryjin111.github.io/forgeengine/preview.png","button":{"title":"▶ Play The Forge Gauntlet","action":{"type":"launch_miniapp","name":"ForgeEngine — The Forge Gauntlet","url":"https://ryjin111.github.io/forgeengine/miniapp.html?spec=demo.json","splashImageUrl":"https://ryjin111.github.io/forgeengine/splash.png","splashBackgroundColor":"#0b0f17"}}}'
     />
     <meta
       name="fc:frame"
-      content='{"version":"1","imageUrl":"https://mythosforge.example/preview.png","button":{"title":"▶ Watch a match","action":{"type":"launch_frame","name":"MythosForge Skirmish","url":"https://mythosforge.example/miniapp.html","splashImageUrl":"https://mythosforge.example/splash.png","splashBackgroundColor":"#0b0f17"}}}'
+      content='{"version":"1","imageUrl":"https://ryjin111.github.io/forgeengine/preview.png","button":{"title":"▶ Play The Forge Gauntlet","action":{"type":"launch_frame","name":"ForgeEngine — The Forge Gauntlet","url":"https://ryjin111.github.io/forgeengine/miniapp.html?spec=demo.json","splashImageUrl":"https://ryjin111.github.io/forgeengine/splash.png","splashBackgroundColor":"#0b0f17"}}}'
     />
 
     <style>
