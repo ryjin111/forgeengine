@@ -14,7 +14,7 @@ import { vocabularyErrors } from "./vocabulary.ts";
 import { evaluateWin, legalActions, validateSpec } from "../core/validate.ts";
 import { initialState } from "../core/engine.ts";
 import { runMatch, type MatchResult } from "../arena/run.ts";
-import { objectiveCell, pickAgentAction, pickObjectiveAction } from "../client/agent.ts";
+import { hasObjective, pickAgentAction, pickObjectiveAction } from "../client/agent.ts";
 import type { ActorController } from "../runtime/turn.ts";
 import type { GameSpec } from "../core/types.ts";
 
@@ -154,9 +154,9 @@ function checkOnce(
   //    or a replay divergence, rejects the spec. Timeout (no winner at maxTurns) is NOT a
   //    rejection — "runs without a winner" is a game-design question, not a safety one —
   //    but it is reported so the caller can decide to surface it.
-  // Objective specs are exercised with the goal-seeking policy so the
-  // playability sim actually plays the genre (race/hold), not just a brawl.
-  const policy = objectiveCell(spec) ? pickObjectiveAction : pickAgentAction;
+  // Objective specs (goal cells, zones, collectibles) are exercised with the
+  // seeking policy so the playability sim plays the genre, not just a brawl.
+  const policy = hasObjective(spec) ? pickObjectiveAction : pickAgentAction;
   const controllers: Record<string, ActorController> = {};
   for (const actor of spec.actors) {
     controllers[actor.id] = (s, sp, a) => policy(s, sp, a);

@@ -46,6 +46,28 @@ export function objectiveCell(spec: GameSpec): { x: number; y: number } | null {
   return null;
 }
 
+/** True if the spec's genre is objective-driven (goal cell, zone, or collectibles). */
+export function hasObjective(spec: GameSpec): boolean {
+  return objectiveCell(spec) !== null || (spec.items?.length ?? 0) > 0;
+}
+
+/** The current target cell for a seeker: fixed goal/zone, else nearest uncollected item. */
+function seekTarget(state: State, spec: GameSpec, from: { x: number; y: number }): { x: number; y: number } | null {
+  const fixed = objectiveCell(spec);
+  if (fixed) return fixed;
+  let best: { x: number; y: number } | null = null;
+  let bestD = Infinity;
+  for (const it of spec.items ?? []) {
+    if (state.items[it.id]) continue;
+    const d = Math.abs(it.pos.x - from.x) + Math.abs(it.pos.y - from.y);
+    if (d < bestD || (d === bestD && best && (it.pos.y * 10000 + it.pos.x) < (best.y * 10000 + best.x))) {
+      bestD = d;
+      best = { ...it.pos };
+    }
+  }
+  return best;
+}
+
 /**
  * Objective-seeking policy: heads for the spec's goal/zone cell instead of
  * brawling, so objective genres (racing, king-of-the-hill) are actually
@@ -56,13 +78,13 @@ export function objectiveCell(spec: GameSpec): { x: number; y: number } | null {
  *  3) no objective in the spec → fall back to the brawler policy.
  */
 export function pickObjectiveAction(state: State, spec: GameSpec, actor: string): Action {
-  const goal = objectiveCell(spec);
-  if (!goal) return pickAgentAction(state, spec, actor);
-
   const acts = legalActions(state, spec, actor);
   if (acts.length === 0) return { type: "pass", actor, params: {} };
 
   const mine = Object.values(state.entities).filter((e) => e.alive && e.owner === actor);
+  const goal = mine.length > 0 ? seekTarget(state, spec, mine[0]!.pos) : objectiveCell(spec);
+  if (!goal) return pickAgentAction(state, spec, actor);
+
   const holder = mine.find((e) => e.pos.x === goal.x && e.pos.y === goal.y);
   if (holder) {
     // Defend the point: attack if able, otherwise hold.

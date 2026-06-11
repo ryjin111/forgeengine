@@ -8,6 +8,8 @@ import { readFileSync } from "node:fs";
 import { gateSpec } from "../src/builder/gate.ts";
 import { initialState, Match, verifyReplay } from "../src/core/engine.ts";
 import { evaluateWin, validateSpec } from "../src/core/validate.ts";
+import { pickObjectiveAction } from "../src/client/agent.ts";
+import { runMatch } from "../src/arena/run.ts";
 import type { GameSpec } from "../src/core/types.ts";
 
 const goldRush = JSON.parse(readFileSync("examples/gold-rush.json", "utf8")) as GameSpec;
@@ -59,6 +61,20 @@ test("validateSpec rejects bad items (duplicate id, unreachable, bad points)", (
 test("gate accepts Gold Rush", async () => {
   const r = await gateSpec(structuredClone(goldRush));
   assert.equal(r.ok, true, !r.ok ? `${r.stage}: ${r.errors.join("; ")}` : "");
+});
+
+test("item-seeking policy actually harvests (collect games are exercised)", () => {
+  // Drive both prospectors with the objective policy: items get collected and
+  // the match ends by score, proving gate sims play the harvest genre.
+  const controllers = {
+    human: (s: Parameters<typeof pickObjectiveAction>[0], sp: GameSpec, a: string) =>
+      pickObjectiveAction(s, sp, a),
+    agent: (s: Parameters<typeof pickObjectiveAction>[0], sp: GameSpec, a: string) =>
+      pickObjectiveAction(s, sp, a),
+  };
+  const result = runMatch(structuredClone(goldRush), "harvest-seed", controllers);
+  assert.notEqual(result.winner, null); // someone reached the score target
+  assert.equal(result.replayOk, true);
 });
 
 // ---------- spawn_wave --------------------------------------------------------

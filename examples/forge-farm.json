@@ -1,0 +1,60 @@
+{
+  "specVersion": 1,
+  "meta": {
+    "name": "Forge Farm",
+    "authors": [
+      "AI-generated (composed from the ForgeEngine vocabulary, validated by the safety gate)"
+    ]
+  },
+  "map": {
+    "width": 8,
+    "height": 8
+  },
+  "entityTypes": {
+    "farmer": {
+      "stats": { "hp": 262144, "attack": 65536 },
+      "assetKey": "farmer_sprite"
+    }
+  },
+  "entities": [
+    { "id": "h1", "type": "farmer", "owner": "human", "pos": { "x": 0, "y": 4 } },
+    { "id": "a1", "type": "farmer", "owner": "agent", "pos": { "x": 7, "y": 3 } }
+  ],
+  "actors": [
+    { "id": "human", "kind": "human" },
+    { "id": "agent", "kind": "agent" }
+  ],
+  "rules": {
+    "allowedActions": ["move", "attack", "pass"],
+    "params": {
+      "moveRange": 2,
+      "attackRange": 1,
+      "attackVariance": 1
+    }
+  },
+  "assets": {
+    "farmer_sprite": { "uri": "mythosforge://assets/farmer_sprite", "kind": "sprite" }
+  },
+  "items": [
+    { "id": "wheat1", "pos": { "x": 2, "y": 1 }, "points": 1 },
+    { "id": "wheat2", "pos": { "x": 5, "y": 1 }, "points": 1 },
+    { "id": "wheat3", "pos": { "x": 2, "y": 6 }, "points": 1 },
+    { "id": "wheat4", "pos": { "x": 5, "y": 6 }, "points": 1 },
+    { "id": "carrot1", "pos": { "x": 3, "y": 2 }, "points": 2 },
+    { "id": "carrot2", "pos": { "x": 4, "y": 5 }, "points": 2 },
+    { "id": "carrot3", "pos": { "x": 1, "y": 4 }, "points": 2 },
+    { "id": "pumpkin1", "pos": { "x": 3, "y": 4 }, "points": 3 },
+    { "id": "pumpkin2", "pos": { "x": 4, "y": 3 }, "points": 3 },
+    { "id": "goldpumpkin1", "pos": { "x": 3, "y": 0 }, "points": 4 },
+    { "id": "goldpumpkin2", "pos": { "x": 4, "y": 7 }, "points": 4 }
+  ],
+  "winConditions": [
+    { "id": "bumper_harvest", "kind": "score_target", "params": { "target": 10 } },
+    { "id": "last_farmer", "kind": "eliminate_all" }
+  ],
+  "turnModel": {
+    "actionsPerActorPerTurn": 1,
+    "resolution": "sequential",
+    "order": ["human", "agent"]
+  }
+}
