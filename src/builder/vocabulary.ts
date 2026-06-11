@@ -15,16 +15,23 @@ import type { ActionType } from "../core/types.ts";
 export const ACTION_TYPES: readonly ActionType[] = ["move", "attack", "edit_rule", "pass"];
 
 /**
- * Win-condition kinds the engine ACTUALLY EVALUATES today. The GameSpec type
- * reserves "reach_cell" and "custom", but core/validate.ts evaluateWin does not
- * implement them yet — a spec relying on one would validate, run, and simply
- * never end. The kit therefore treats unimplemented kinds as a hard reject
- * (fail-closed beats silently-unwinnable).
+ * Win-condition kinds the engine ACTUALLY EVALUATES today (Phase 1 added
+ * reach_cell — racing/objective games — and survive_turns — survival games).
+ * The GameSpec type still reserves "custom"; a spec relying on an unimplemented
+ * kind would validate, run, and simply never end, so the kit treats reserved
+ * kinds as a hard reject (fail-closed beats silently-unwinnable).
+ *
+ * Promotion discipline: a kind appears here ONLY after core/validate.ts
+ * evaluateWin actually evaluates it — test/winkinds.test.ts pins this.
  */
-export const IMPLEMENTED_WIN_KINDS: readonly string[] = ["eliminate_all"];
+export const IMPLEMENTED_WIN_KINDS: readonly string[] = [
+  "eliminate_all",
+  "reach_cell",
+  "survive_turns",
+];
 
 /** Reserved in the spec format but NOT yet runnable — rejected by the gate. */
-export const RESERVED_WIN_KINDS: readonly string[] = ["reach_cell", "custom"];
+export const RESERVED_WIN_KINDS: readonly string[] = ["custom"];
 
 /** Turn resolution models the orchestrator implements (runtime/turn.ts). */
 export const TURN_RESOLUTIONS: readonly string[] = ["simultaneous", "sequential"];

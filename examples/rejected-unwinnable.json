@@ -1,7 +1,7 @@
 {
   "specVersion": 1,
   "meta": {
-    "name": "Unwinnable Maze",
+    "name": "Custom Predicate (not yet runnable)",
     "authors": [
       "mythosforge"
     ]
@@ -88,11 +88,8 @@
   "winConditions": [
     {
       "id": "w1",
-      "kind": "reach_cell",
-      "params": {
-        "x": 5,
-        "y": 5
-      }
+      "kind": "custom",
+      "params": {}
     }
   ],
   "turnModel": {

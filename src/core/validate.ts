@@ -51,8 +51,61 @@ export function validateSpec(spec: GameSpec): ValidationResult {
       for (const who of tm.order) if (!actorIds.has(who)) errors.push(`turnModel.order: unknown actor ${who}`);
     }
   }
-  // TODO(gameplay): validate winConditions params + that asset refs resolve.
+  for (const cond of spec.winConditions) {
+    if (cond.kind === "reach_cell") {
+      const gx = cond.params?.x;
+      const gy = cond.params?.y;
+      if (gx === undefined || gy === undefined || !Number.isInteger(gx) || !Number.isInteger(gy)) {
+        errors.push(`winConditions.${cond.id}: reach_cell requires integer params x, y`);
+      } else if (!inBounds(spec, gx, gy)) {
+        errors.push(`winConditions.${cond.id}: goal (${gx},${gy}) is out of bounds or blocked`);
+      } else if (!goalReachable(spec, gx, gy)) {
+        // Static reachability: a goal no starting unit could ever walk to is the
+        // racing-game version of "unwinnable" — reject it up front.
+        errors.push(`winConditions.${cond.id}: goal (${gx},${gy}) is unreachable from every starting unit`);
+      }
+    }
+    if (cond.kind === "survive_turns") {
+      const ticks = cond.params?.ticks;
+      if (ticks === undefined || !Number.isInteger(ticks) || ticks < 1) {
+        errors.push(`winConditions.${cond.id}: survive_turns requires integer params ticks >= 1`);
+      }
+    }
+  }
   return { ok: errors.length === 0, errors };
+}
+
+/** BFS over unblocked cells (4-neighbor): can ANY starting unit reach the goal?
+ *  Conservative connectivity proxy — moveRange changes step size, not which cells
+ *  are connected, so 4-neighbor flood-fill is the right static check. Pure. */
+function goalReachable(spec: GameSpec, gx: number, gy: number): boolean {
+  const { width, height } = spec.map;
+  const seen = new Uint8Array(width * height);
+  const queue: number[] = [];
+  for (const e of spec.entities) {
+    const idx = e.pos.y * width + e.pos.x;
+    if (inBounds(spec, e.pos.x, e.pos.y) && !seen[idx]) {
+      seen[idx] = 1;
+      queue.push(idx);
+    }
+  }
+  while (queue.length > 0) {
+    const idx = queue.shift()!;
+    const x = idx % width;
+    const y = (idx - x) / width;
+    if (x === gx && y === gy) return true;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!inBounds(spec, nx, ny)) continue;
+      const nIdx = ny * width + nx;
+      if (!seen[nIdx]) {
+        seen[nIdx] = 1;
+        queue.push(nIdx);
+      }
+    }
+  }
+  return false;
 }
 
 export function inBounds(spec: GameSpec, x: number, y: number): boolean {
@@ -170,7 +223,29 @@ export function evaluateWin(state: State, spec: GameSpec): ActorIdResult {
         if (actorsWithUnits.length === 0) return "draw";
       }
     }
-    // TODO(gameplay): reach_cell / custom predicates.
+    if (cond.kind === "reach_cell") {
+      // Racing/objective: first actor with a living unit on the goal cell wins.
+      // Params are validated by validateSpec; evaluation stays pure, no RNG.
+      const gx = cond.params?.x;
+      const gy = cond.params?.y;
+      if (gx !== undefined && gy !== undefined) {
+        for (const e of Object.values(state.entities)) {
+          if (e.alive && e.pos.x === gx && e.pos.y === gy) return e.owner;
+        }
+      }
+    }
+    if (cond.kind === "survive_turns") {
+      // Survival/endurance: only evaluated once the deadline tick is reached.
+      const deadline = cond.params?.ticks;
+      if (deadline !== undefined && state.tick >= deadline) {
+        const living = new Set<string>();
+        for (const e of Object.values(state.entities)) if (e.alive) living.add(e.owner);
+        const survivors = spec.actors.filter((a) => living.has(a.id));
+        if (survivors.length === 1) return survivors[0]!.id;
+        return "draw"; // several (or zero) made it to the deadline — endurance draw
+      }
+    }
+    // TODO(gameplay): custom predicates.
   }
   return null;
 }

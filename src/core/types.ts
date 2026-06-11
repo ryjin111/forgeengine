@@ -112,8 +112,13 @@ export interface AssetRef {
 
 export interface WinCondition {
   id: string;
-  /** Declarative predicate evaluated by the (pure) rules module. Scaffold: stub. */
-  kind: "eliminate_all" | "reach_cell" | "custom";
+  /** Declarative predicate evaluated by the (pure) rules module per tick, in array order.
+   *  - eliminate_all: last actor with living units wins.
+   *  - reach_cell: first actor to get a living unit onto params {x, y} wins (racing/objective).
+   *  - survive_turns: at tick >= params {ticks}, sole actor with living units wins;
+   *    several (or zero) survivors = draw (survival/endurance).
+   *  - custom: reserved, not implemented — the kit gate rejects it. */
+  kind: "eliminate_all" | "reach_cell" | "survive_turns" | "custom";
   params?: Record<string, number>;
 }
 

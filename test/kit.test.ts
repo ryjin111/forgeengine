@@ -58,7 +58,7 @@ test("implemented win kinds actually evaluate; reserved kinds do not", () => {
 
 test("gate rejects reserved win kinds at the vocabulary stage", async () => {
   const spec = structuredClone(skirmishSpec) as GameSpec;
-  spec.winConditions = [{ id: "w1", kind: "reach_cell" }];
+  spec.winConditions = [{ id: "w1", kind: "custom" }];
   const r = await gateSpec(spec);
   assert.equal(r.ok, false);
   if (r.ok) return;
