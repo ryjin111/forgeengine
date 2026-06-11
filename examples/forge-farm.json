@@ -1,7 +1,7 @@
 {
   "specVersion": 1,
   "meta": {
-    "name": "Harvest Hustle",
+    "name": "Harvest Hollow",
     "authors": [
       "AI-generated (composed from the ForgeEngine vocabulary, validated by the safety gate)"
     ]
@@ -25,11 +25,9 @@
     { "id": "agent", "kind": "agent" }
   ],
   "rules": {
-    "allowedActions": ["move", "attack", "pass"],
+    "allowedActions": ["move", "pass"],
     "params": {
-      "moveRange": 2,
-      "attackRange": 1,
-      "attackVariance": 1
+      "moveRange": 2
     }
   },
   "assets": {
@@ -49,8 +47,7 @@
     { "id": "goldpumpkin2", "pos": { "x": 4, "y": 7 }, "points": 4 }
   ],
   "winConditions": [
-    { "id": "bumper_harvest", "kind": "score_target", "params": { "target": 10 } },
-    { "id": "last_farmer", "kind": "eliminate_all" }
+    { "id": "bumper_harvest", "kind": "score_target", "params": { "target": 10 } }
   ],
   "turnModel": {
     "actionsPerActorPerTurn": 1,
