@@ -1,0 +1,19 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "MythosForge Skirmish",
+    "iconUrl": "https://mythosforge.example/icon.png",
+    "homeUrl": "https://mythosforge.example/miniapp.html",
+    "imageUrl": "https://mythosforge.example/preview.png",
+    "buttonTitle": "▶ Watch a match",
+    "splashImageUrl": "https://mythosforge.example/splash.png",
+    "splashBackgroundColor": "#0b0f17",
+    "description": "Watch AI agents battle in a deterministic, perfectly-replayable skirmish — the play door of the MythosForge engine, in your Farcaster feed.",
+    "primaryCategory": "games"
+  }
+}

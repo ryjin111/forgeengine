@@ -1,0 +1,106 @@
+{
+  "specVersion": 1,
+  "meta": {
+    "name": "Unwinnable Maze",
+    "authors": [
+      "mythosforge"
+    ]
+  },
+  "map": {
+    "width": 6,
+    "height": 6
+  },
+  "entityTypes": {
+    "grunt": {
+      "stats": {
+        "hp": 196608,
+        "attack": 131072
+      },
+      "assetKey": "grunt_sprite"
+    }
+  },
+  "entities": [
+    {
+      "id": "h1",
+      "type": "grunt",
+      "owner": "human",
+      "pos": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "a1",
+      "type": "grunt",
+      "owner": "agent",
+      "pos": {
+        "x": 5,
+        "y": 5
+      }
+    }
+  ],
+  "actors": [
+    {
+      "id": "human",
+      "kind": "human"
+    },
+    {
+      "id": "agent",
+      "kind": "agent"
+    }
+  ],
+  "rules": {
+    "allowedActions": [
+      "move",
+      "attack",
+      "edit_rule",
+      "pass"
+    ],
+    "params": {
+      "moveRange": 1,
+      "attackRange": 1,
+      "attackVariance": 1
+    },
+    "editable": {
+      "moveRange": {
+        "min": 1,
+        "max": 3,
+        "editableBy": [
+          "human",
+          "agent"
+        ]
+      },
+      "attackRange": {
+        "min": 1,
+        "max": 2,
+        "editableBy": [
+          "agent"
+        ]
+      }
+    }
+  },
+  "assets": {
+    "grunt_sprite": {
+      "uri": "mythosforge://assets/grunt_sprite",
+      "kind": "sprite"
+    }
+  },
+  "winConditions": [
+    {
+      "id": "w1",
+      "kind": "reach_cell",
+      "params": {
+        "x": 5,
+        "y": 5
+      }
+    }
+  ],
+  "turnModel": {
+    "actionsPerActorPerTurn": 1,
+    "resolution": "simultaneous",
+    "order": [
+      "human",
+      "agent"
+    ]
+  }
+}
