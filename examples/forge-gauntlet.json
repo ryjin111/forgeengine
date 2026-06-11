@@ -1,7 +1,7 @@
 {
   "specVersion": 1,
   "meta": {
-    "name": "The Forge Gauntlet",
+    "name": "Gatewatch",
     "authors": [
       "AI-generated (composed from the ForgeEngine vocabulary by a language model, validated by the safety gate)"
     ]
@@ -10,13 +10,69 @@
     "width": 9,
     "height": 7,
     "blocked": [
-      false, false, false, false, true,  false, false, false, false,
-      false, false, false, false, false, false, false, false, false,
-      false, false, false, false, true,  false, false, false, false,
-      false, false, false, false, true,  false, false, false, false,
-      false, false, false, false, true,  false, false, false, false,
-      false, false, false, false, false, false, false, false, false,
-      false, false, false, false, true,  false, false, false, false
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
     ]
   },
   "entityTypes": {
@@ -36,20 +92,87 @@
     }
   },
   "entities": [
-    { "id": "w1", "type": "warden", "owner": "human", "pos": { "x": 1, "y": 2 } },
-    { "id": "w2", "type": "warden", "owner": "human", "pos": { "x": 1, "y": 4 } },
-    { "id": "s1", "type": "swarmling", "owner": "agent", "pos": { "x": 7, "y": 1 } },
-    { "id": "s2", "type": "swarmling", "owner": "agent", "pos": { "x": 7, "y": 2 } },
-    { "id": "s3", "type": "swarmling", "owner": "agent", "pos": { "x": 7, "y": 3 } },
-    { "id": "s4", "type": "swarmling", "owner": "agent", "pos": { "x": 7, "y": 4 } },
-    { "id": "s5", "type": "swarmling", "owner": "agent", "pos": { "x": 7, "y": 5 } }
+    {
+      "id": "w1",
+      "type": "warden",
+      "owner": "human",
+      "pos": {
+        "x": 1,
+        "y": 2
+      }
+    },
+    {
+      "id": "w2",
+      "type": "warden",
+      "owner": "human",
+      "pos": {
+        "x": 1,
+        "y": 4
+      }
+    },
+    {
+      "id": "s1",
+      "type": "swarmling",
+      "owner": "agent",
+      "pos": {
+        "x": 7,
+        "y": 1
+      }
+    },
+    {
+      "id": "s2",
+      "type": "swarmling",
+      "owner": "agent",
+      "pos": {
+        "x": 7,
+        "y": 2
+      }
+    },
+    {
+      "id": "s3",
+      "type": "swarmling",
+      "owner": "agent",
+      "pos": {
+        "x": 7,
+        "y": 3
+      }
+    },
+    {
+      "id": "s4",
+      "type": "swarmling",
+      "owner": "agent",
+      "pos": {
+        "x": 7,
+        "y": 4
+      }
+    },
+    {
+      "id": "s5",
+      "type": "swarmling",
+      "owner": "agent",
+      "pos": {
+        "x": 7,
+        "y": 5
+      }
+    }
   ],
   "actors": [
-    { "id": "human", "kind": "human" },
-    { "id": "agent", "kind": "agent" }
+    {
+      "id": "human",
+      "kind": "human"
+    },
+    {
+      "id": "agent",
+      "kind": "agent"
+    }
   ],
   "rules": {
-    "allowedActions": ["move", "attack", "edit_rule", "pass"],
+    "allowedActions": [
+      "move",
+      "attack",
+      "edit_rule",
+      "pass"
+    ],
     "params": {
       "moveRange": 2,
       "attackRange": 1,
@@ -59,25 +182,42 @@
       "moveRange": {
         "min": 1,
         "max": 3,
-        "editableBy": ["human", "agent"]
+        "editableBy": [
+          "human",
+          "agent"
+        ]
       },
       "attackRange": {
         "min": 1,
         "max": 2,
-        "editableBy": ["agent"]
+        "editableBy": [
+          "agent"
+        ]
       }
     }
   },
   "assets": {
-    "warden_sprite": { "uri": "mythosforge://assets/warden_sprite", "kind": "sprite" },
-    "swarmling_sprite": { "uri": "mythosforge://assets/swarmling_sprite", "kind": "sprite" }
+    "warden_sprite": {
+      "uri": "mythosforge://assets/warden_sprite",
+      "kind": "sprite"
+    },
+    "swarmling_sprite": {
+      "uri": "mythosforge://assets/swarmling_sprite",
+      "kind": "sprite"
+    }
   },
   "winConditions": [
-    { "id": "last_standing", "kind": "eliminate_all" }
+    {
+      "id": "last_standing",
+      "kind": "eliminate_all"
+    }
   ],
   "turnModel": {
     "actionsPerActorPerTurn": 1,
     "resolution": "sequential",
-    "order": ["human", "agent"]
+    "order": [
+      "human",
+      "agent"
+    ]
   }
 }
