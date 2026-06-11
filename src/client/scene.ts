@@ -331,6 +331,8 @@ export class BoardScene extends Phaser.Scene {
       : ev.kind === "passed" ? `${ev.actor} passed`
       : ev.kind === "rejected" ? `✗ ${ev.action?.actor ?? "?"} ${ev.action?.type ?? "?"} rejected (${ev.reason})`
       : ev.kind === "scored" ? `★ ${ev.actor} +${ev.points} (score ${ev.total})`
+      : ev.kind === "collected" ? `◆ ${ev.entity} collected ${ev.item} (+${ev.points} ${ev.actor})`
+      : ev.kind === "spawned" ? `⊕ ${ev.entity} spawned at (${ev.at.x},${ev.at.y})`
       : `🏆 ${ev.winner} wins`;
     const div = document.createElement("div");
     div.className = "row";

@@ -3,8 +3,9 @@
 // builder tools (agent) both emit this exact shape — one format, no fork.
 
 /** Engine + spec versioning. Bumped on any State-shape change so old transcripts
- *  fail-closed at replay instead of silently mis-replaying (0.2.0: State.scores). */
-export const ENGINE_VERSION = "0.2.0" as const;
+ *  fail-closed at replay instead of silently mis-replaying
+ *  (0.2.0: State.scores; 0.3.0: State.items + wave spawns). */
+export const ENGINE_VERSION = "0.3.0" as const;
 
 /** A fixed-point scalar (Q16.16). Stored as a plain integer = value * 65536.
  *  State math is integer/fixed-point ONLY — never JS floats — so the log is
@@ -37,6 +38,14 @@ export interface GameSpec {
    *  GameSpec references assets; it never embeds pixels. */
   assets: Record<string, AssetRef>;
   winConditions: WinCondition[];
+  /** Collectible pickups: a living unit ending a tick on an uncollected item
+   *  collects it — its owner gains `points` (the collect mechanic's score
+   *  source). Optional; omitted = no items. */
+  items?: ItemSpec[];
+  /** Scheduled reinforcements: at exactly `tick`, each listed entity spawns
+   *  (skipped deterministically if its cell is occupied). SCHEDULE-DRIVEN —
+   *  zero RNG, so waves replay identically by construction. Optional. */
+  waves?: WaveSpec[];
   /** How turns are paced. Read by the turn ORCHESTRATOR (runtime/turn.ts), NOT by the engine
    *  — the engine stays a pure resolver of whatever lands in a tick. Optional; a sensible
    *  default is derived from `actors` when absent. Lets a card game vs a tactics game (or a
@@ -111,6 +120,22 @@ export interface AssetRef {
   kind: "sprite" | "audio";
 }
 
+/** A collectible pickup on the board. */
+export interface ItemSpec {
+  id: string;
+  pos: Cell;
+  /** Points awarded to the collector's owner (integer >= 1). */
+  points: number;
+  assetKey?: string;
+}
+
+/** One scheduled reinforcement wave. Deterministic: fires at exactly `tick`. */
+export interface WaveSpec {
+  /** Tick the wave spawns on (>= 1; tick 0 spawns belong in `entities`). */
+  tick: number;
+  entities: EntitySpec[];
+}
+
 export interface WinCondition {
   id: string;
   /** Declarative predicate evaluated by the (pure) rules module per tick, in array order.
@@ -138,9 +163,11 @@ export interface State {
   entities: Record<EntityId, EntityState>;
   /** Live copy of editable rule params (seeded from spec, then mutated by edit_rule). */
   ruleParams: Record<RuleId, number>;
-  /** Per-actor points (integers). Accrued by score sources — today: kills award the
-   *  live `killScore` rule param to the attacker's owner. Read by score_target wins. */
+  /** Per-actor points (integers). Accrued by score sources — kills (× the live
+   *  `killScore` rule param), capture zones, and item pickups. Read by score wins. */
   scores: Record<ActorId, number>;
+  /** Collected flags per item id (false = still on the board). */
+  items: Record<string, boolean>;
   /** Set once a win condition fires. */
   winner: ActorId | "draw" | null;
 }
@@ -206,6 +233,8 @@ export type GameEvent =
   | { kind: "died"; entity: EntityId }
   | { kind: "rule_edited"; rule: RuleId; from: number; to: number }
   | { kind: "scored"; actor: ActorId; points: number; total: number }
+  | { kind: "collected"; item: string; entity: EntityId; actor: ActorId; points: number }
+  | { kind: "spawned"; entity: EntityId; owner: ActorId; at: Cell }
   | { kind: "passed"; actor: ActorId }
   | { kind: "rejected"; action: Action; reason: string } // illegal → state unchanged
   | { kind: "win"; winner: ActorId | "draw" };

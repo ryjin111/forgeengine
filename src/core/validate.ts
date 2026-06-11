@@ -77,32 +77,33 @@ export function validateSpec(spec: GameSpec): ValidationResult {
         errors.push(`winConditions.${cond.id}: score_target requires integer params target >= 1`);
         continue;
       }
-      // Static winnability for today's only score source (kills × killScore):
-      // the target must be ACHIEVABLE by someone, and rule-editing must not be
-      // able to switch scoring off mid-game.
-      const killScore = spec.rules.params.killScore;
-      if (killScore === undefined || !Number.isInteger(killScore) || killScore < 1) {
-        errors.push(
-          `winConditions.${cond.id}: score_target needs rules.params.killScore >= 1 (the only score source today)`,
-        );
-        continue;
-      }
+      // Static winnability across ALL score sources: kills (× killScore),
+      // item pickups, and capture zones (unbounded over time). The target must
+      // be achievable even at the EDIT-FLOOR killScore — rule-editing must not
+      // be able to make a winnable game unwinnable mid-match.
+      const hasCapture = spec.winConditions.some((c) => c.kind === "capture_point");
+      const itemPoints = (spec.items ?? []).reduce((sum, it) => sum + Math.max(0, it.points), 0);
+      const killScoreParam = spec.rules.params.killScore ?? 0;
       const editPolicy = spec.rules.editable?.killScore;
-      if (editPolicy && editPolicy.min < 1) {
-        errors.push(
-          `winConditions.${cond.id}: editable killScore min must stay >= 1 or the game can be edited unwinnable`,
-        );
-      }
-      // Max points an actor can earn = units owned by everyone else × killScore.
+      const killScoreFloor = editPolicy ? Math.min(editPolicy.min, killScoreParam) : killScoreParam;
+      // Units killable by an actor = everyone else's units, incl. wave reinforcements.
       const unitsByOwner: Record<string, number> = {};
-      for (const e of spec.entities) unitsByOwner[e.owner] = (unitsByOwner[e.owner] ?? 0) + 1;
-      const total = spec.entities.length;
-      const achievable = spec.actors.some(
-        (a) => (total - (unitsByOwner[a.id] ?? 0)) * killScore >= target,
-      );
-      if (!achievable) {
+      let totalUnits = 0;
+      const allUnits = [...spec.entities, ...(spec.waves ?? []).flatMap((w) => w.entities)];
+      for (const e of allUnits) {
+        unitsByOwner[e.owner] = (unitsByOwner[e.owner] ?? 0) + 1;
+        totalUnits++;
+      }
+      const achievableAt = (ks: number) =>
+        hasCapture ||
+        spec.actors.some((a) => (totalUnits - (unitsByOwner[a.id] ?? 0)) * Math.max(0, ks) + itemPoints >= target);
+      if (!achievableAt(killScoreParam)) {
         errors.push(
-          `winConditions.${cond.id}: target ${target} is unachievable — no actor can earn that many points from the available kills`,
+          `winConditions.${cond.id}: target ${target} is unachievable from the available score sources (kills, items, capture zones)`,
+        );
+      } else if (!achievableAt(killScoreFloor)) {
+        errors.push(
+          `winConditions.${cond.id}: editable killScore floor ${killScoreFloor} can make the target unwinnable mid-game — raise editable.killScore.min`,
         );
       }
     }
@@ -129,6 +130,39 @@ export function validateSpec(spec: GameSpec): ValidationResult {
       }
     }
   }
+
+  // ---- items (collect mechanic) ----
+  const itemIds = new Set<string>();
+  for (const it of spec.items ?? []) {
+    if (itemIds.has(it.id)) errors.push(`items.${it.id}: duplicate item id`);
+    itemIds.add(it.id);
+    if (!inBounds(spec, it.pos.x, it.pos.y)) {
+      errors.push(`items.${it.id}: pos out of bounds or blocked`);
+    } else if (!goalReachable(spec, it.pos.x, it.pos.y)) {
+      errors.push(`items.${it.id}: unreachable from every starting unit`);
+    }
+    if (!Number.isInteger(it.points) || it.points < 1) {
+      errors.push(`items.${it.id}: points must be an integer >= 1`);
+    }
+  }
+
+  // ---- waves (spawn mechanic — schedule-driven, zero RNG) ----
+  const allEntityIds = new Set(spec.entities.map((e) => e.id));
+  for (const [i, w] of (spec.waves ?? []).entries()) {
+    if (!Number.isInteger(w.tick) || w.tick < 1) {
+      errors.push(`waves[${i}]: tick must be an integer >= 1 (tick-0 units belong in entities)`);
+    }
+    for (const e of w.entities) {
+      if (allEntityIds.has(e.id)) {
+        errors.push(`waves[${i}].${e.id}: entity id already used (must be globally unique)`);
+      }
+      allEntityIds.add(e.id);
+      if (!spec.entityTypes[e.type]) errors.push(`waves[${i}].${e.id}: unknown type ${e.type}`);
+      if (!actorIds.has(e.owner)) errors.push(`waves[${i}].${e.id}: unknown owner ${e.owner}`);
+      if (!inBounds(spec, e.pos.x, e.pos.y)) errors.push(`waves[${i}].${e.id}: pos out of bounds`);
+    }
+  }
+
   return { ok: errors.length === 0, errors };
 }
 
@@ -264,6 +298,77 @@ export function legalityReason(state: State, spec: GameSpec, action: Action): st
 // ---------------------------------------------------------------------------
 
 /**
+ * Wave spawning: every wave scheduled for exactly `tick` places its entities.
+ * SCHEDULE-DRIVEN, zero RNG — a wave fires at its tick or (if the cell is
+ * occupied by a living unit, or the id already exists) that entity is skipped
+ * deterministically. Pure; returns null when no wave fires this tick.
+ */
+export function spawnWaveEntities(
+  state: State,
+  spec: GameSpec,
+  tick: number,
+): { entities: State["entities"]; spawned: Array<{ entity: string; owner: string; at: { x: number; y: number } }> } | null {
+  if (!spec.waves) return null;
+  let entities: State["entities"] | null = null;
+  const spawned: Array<{ entity: string; owner: string; at: { x: number; y: number } }> = [];
+  for (const wave of spec.waves) {
+    if (wave.tick !== tick) continue;
+    for (const e of wave.entities) {
+      const pool = entities ?? state.entities;
+      if (pool[e.id]) continue; // id already on the board — deterministic skip
+      const occupied = Object.values(pool).some(
+        (x) => x.alive && x.pos.x === e.pos.x && x.pos.y === e.pos.y,
+      );
+      if (occupied) continue; // cell taken — deterministic skip
+      const tmpl = spec.entityTypes[e.type];
+      entities = entities ?? { ...state.entities };
+      entities[e.id] = {
+        id: e.id,
+        type: e.type,
+        owner: e.owner,
+        pos: { ...e.pos },
+        stats: { ...(tmpl?.stats ?? {}), ...(e.stats ?? {}) },
+        alive: true,
+      };
+      spawned.push({ entity: e.id, owner: e.owner, at: { ...e.pos } });
+    }
+  }
+  return entities ? { entities, spawned } : null;
+}
+
+/**
+ * Item collection: a living unit standing on an uncollected item collects it —
+ * the owner gains the item's points. Pure; returns null when nothing collected.
+ */
+export function collectItemPickups(
+  state: State,
+  spec: GameSpec,
+): {
+  items: State["items"];
+  scores: State["scores"];
+  picked: Array<{ item: string; entity: string; actor: string; points: number }>;
+} | null {
+  if (!spec.items) return null;
+  let items: State["items"] | null = null;
+  let scores: State["scores"] | null = null;
+  const picked: Array<{ item: string; entity: string; actor: string; points: number }> = [];
+  for (const it of spec.items) {
+    if (state.items[it.id]) continue; // already collected
+    for (const e of Object.values(state.entities)) {
+      if (e.alive && e.pos.x === it.pos.x && e.pos.y === it.pos.y) {
+        items = items ?? { ...state.items };
+        scores = scores ?? { ...state.scores };
+        items[it.id] = true;
+        scores[e.owner] = (scores[e.owner] ?? 0) + it.points;
+        picked.push({ item: it.id, entity: e.id, actor: e.owner, points: it.points });
+        break;
+      }
+    }
+  }
+  return items && scores ? { items, scores, picked } : null;
+}
+
+/**
  * capture_point accrual: each capture zone awards perTick points to the sole
  * actor with a living unit standing on it. Pure function of (state, spec) —
  * returns null when nothing accrued this tick.
@@ -304,6 +409,12 @@ export function evaluateWin(state: State, spec: GameSpec): ActorIdResult {
     if (cond.kind === "eliminate_all") {
       const living = new Set<string>();
       for (const e of Object.values(state.entities)) if (e.alive) living.add(e.owner);
+      // PENDING wave reinforcements count as presence: an actor whose units all
+      // died but who has a wave still scheduled is not eliminated yet (closes the
+      // tick-0 instant-win hole for delayed/asymmetric spawns).
+      for (const w of spec.waves ?? []) {
+        if (w.tick > state.tick) for (const e of w.entities) living.add(e.owner);
+      }
       const actorsWithUnits = spec.actors.filter((a) => living.has(a.id));
       // Only decide once entities exist to eliminate (avoids an instant draw at tick 0
       // for specs that spawn units later). Here all specs spawn up front.

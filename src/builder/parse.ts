@@ -59,6 +59,40 @@ export function parseSpec(input: unknown): ParseResult {
     if (wn) str(wn.id, `${path}.id`, e);
   });
 
+  // Optional surfaces — only shape-checked when present.
+  if (o.items !== undefined) {
+    arr(o.items, "items", e, (it, path) => {
+      const itn = asObject(it, path, e);
+      if (!itn) return;
+      str(itn.id, `${path}.id`, e);
+      num(itn.points, `${path}.points`, e);
+      const pos = asObject(itn.pos, `${path}.pos`, e);
+      if (pos) {
+        num(pos.x, `${path}.pos.x`, e);
+        num(pos.y, `${path}.pos.y`, e);
+      }
+    });
+  }
+  if (o.waves !== undefined) {
+    arr(o.waves, "waves", e, (w, path) => {
+      const wn = asObject(w, path, e);
+      if (!wn) return;
+      num(wn.tick, `${path}.tick`, e);
+      arr(wn.entities, `${path}.entities`, e, (ent, epath) => {
+        const en = asObject(ent, epath, e);
+        if (!en) return;
+        str(en.id, `${epath}.id`, e);
+        str(en.type, `${epath}.type`, e);
+        str(en.owner, `${epath}.owner`, e);
+        const pos = asObject(en.pos, `${epath}.pos`, e);
+        if (pos) {
+          num(pos.x, `${epath}.pos.x`, e);
+          num(pos.y, `${epath}.pos.y`, e);
+        }
+      });
+    });
+  }
+
   if (e.length > 0) return { ok: false, errors: e };
   return { ok: true, spec: input as GameSpec };
 }

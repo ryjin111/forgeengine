@@ -77,6 +77,13 @@ export function describeVocabulary(): Record<string, unknown> {
       params: "free numeric parameters keyed by rule id",
       editable: "optional per-rule {min,max,editableBy} — in-game rule editing stays bounded",
     },
+    mechanics: {
+      items:
+        "optional collectibles [{id, pos, points}] — a unit ending a tick on one collects it, its owner scores the points (validator: unique ids, reachable, points >= 1)",
+      waves:
+        "optional scheduled reinforcements [{tick, entities}] — spawn at EXACTLY that tick, schedule-driven with ZERO RNG (occupied cell or duplicate id = deterministic skip); pending waves count as presence for eliminate_all",
+      scoreSources: "kills (× killScore rule param) + item pickups + capture zones — all feed state.scores",
+    },
     playContract: {
       observe: "observe(state, actor) -> per-actor Observation projection",
       legalActions: "legalActions(state, spec, actor) -> every action the engine will accept",

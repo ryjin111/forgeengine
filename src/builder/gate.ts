@@ -101,8 +101,15 @@ function checkOnce(
   if (area > limits.maxMapArea) {
     limitErrors.push(`map area ${area} exceeds cap ${limits.maxMapArea}`);
   }
-  if (spec.entities.length > limits.maxEntities) {
-    limitErrors.push(`${spec.entities.length} entities exceeds cap ${limits.maxEntities}`);
+  const totalEntities =
+    spec.entities.length + (spec.waves ?? []).reduce((n, w) => n + w.entities.length, 0);
+  if (totalEntities > limits.maxEntities) {
+    limitErrors.push(
+      `${totalEntities} entities exceeds cap ${limits.maxEntities} (count includes wave reinforcements)`,
+    );
+  }
+  if ((spec.items ?? []).length > limits.maxEntities) {
+    limitErrors.push(`${spec.items!.length} items exceeds cap ${limits.maxEntities}`);
   }
   if (spec.actors.length > limits.maxActors) {
     limitErrors.push(`${spec.actors.length} actors exceeds cap ${limits.maxActors}`);

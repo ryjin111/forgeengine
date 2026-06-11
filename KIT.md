@@ -63,8 +63,11 @@ The Ludii-style "small Lego set". Compose ONLY from it:
   (king-of-the-hill — holding the zone at {x,y} awards {perTick} points each tick,
   first to {target} wins; unreachable zones rejected statically). `custom` is reserved —
   the gate REJECTS reserved kinds until the engine implements them (no silently-unwinnable games).
+- **mechanics:** `items` (collectibles — walk on one, your owner scores its points) and
+  `waves` (scheduled reinforcements — spawn at exactly their tick, zero RNG; pending waves
+  count as presence for eliminate_all). Score sources: kills × `killScore`, items, capture zones.
 - **turn models:** `simultaneous` | `sequential`, N actions per actor per turn
-- **limits (gate-enforced):** map ≤ 1024 cells, ≤ 64 entities, ≤ 8 actors
+- **limits (gate-enforced):** map ≤ 1024 cells, ≤ 64 entities (wave reinforcements counted), ≤ 8 actors
 The vocabulary is pinned to engine reality by `test/kit.test.ts` — docs cannot drift.
 
 ### 3. The AI-play contract (how any agent plays any gated game)

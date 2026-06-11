@@ -12,12 +12,12 @@
 // exists (combat, win-eval, regen, a per-tick rng draw), live and replay stay identical —
 // "group log by observed tick and fold" would NOT have been equivalent.
 
-import type { Action, GameSpec, LogEntry, MatchHeader, State } from "./types.ts";
+import type { Action, GameEvent, GameSpec, LogEntry, MatchHeader, State } from "./types.ts";
 import { ENGINE_VERSION, SYSTEM_SEQ } from "./types.ts";
 import { canonicalize, hashCanonical } from "./canonicalize.ts";
 import { makePrng, type Prng } from "./prng.ts";
 import { step } from "./step.ts";
-import { accrueCapturePoints, evaluateWin } from "./validate.ts";
+import { accrueCapturePoints, collectItemPickups, evaluateWin, spawnWaveEntities } from "./validate.ts";
 
 /** A submitted-but-not-yet-resolved action, stamped with its order + tick assignment. */
 interface PendingAction {
@@ -51,20 +51,30 @@ function resolveTick(
     s = r.state;
     entries.push({ seq: p.seq, tick, action: p.action, events: r.events });
   }
-  // Intrinsic per-tick mechanics run HERE (after this tick's actions), as a system entry
+  // Intrinsic per-tick mechanics run HERE (after this tick's actions), as system entries
   // (action: null, seq: SYSTEM_SEQ) so live and replay share one code path across the full
-  // range. Capture-zone scoring runs first, then win-eval sees the fresh scores.
+  // range. Fixed order: waves spawn → items collect → capture zones score → win-eval
+  // sees the fresh world. All pure, all zero-RNG (waves are schedule-driven).
   // TODO(gameplay): per-tick status/regen, and resolve simultaneous adjacency if added.
   if (s.winner === null) {
+    const systemEvents: GameEvent[] = [];
+    const wave = spawnWaveEntities(s, spec, tick);
+    if (wave) {
+      s = { ...s, entities: wave.entities };
+      for (const sp of wave.spawned) systemEvents.push({ kind: "spawned", ...sp });
+    }
+    const picked = collectItemPickups(s, spec);
+    if (picked) {
+      s = { ...s, items: picked.items, scores: picked.scores };
+      for (const p of picked.picked) systemEvents.push({ kind: "collected", ...p });
+    }
     const cap = accrueCapturePoints(s, spec);
     if (cap) {
       s = { ...s, scores: cap.scores };
-      entries.push({
-        seq: SYSTEM_SEQ,
-        tick,
-        action: null,
-        events: cap.gains.map((g) => ({ kind: "scored" as const, ...g })),
-      });
+      for (const g of cap.gains) systemEvents.push({ kind: "scored", ...g });
+    }
+    if (systemEvents.length > 0) {
+      entries.push({ seq: SYSTEM_SEQ, tick, action: null, events: systemEvents });
     }
   }
   if (s.winner === null) {
@@ -149,11 +159,14 @@ export function initialState(spec: GameSpec): State {
   }
   const scores: State["scores"] = {};
   for (const a of spec.actors) scores[a.id] = 0;
+  const items: State["items"] = {};
+  for (const it of spec.items ?? []) items[it.id] = false;
   return {
     tick: 0,
     entities,
     ruleParams: { ...spec.rules.params },
     scores,
+    items,
     winner: null,
   };
 }
