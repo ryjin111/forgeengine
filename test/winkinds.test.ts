@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { gateSpec } from "../src/builder/gate.ts";
 import { IMPLEMENTED_WIN_KINDS } from "../src/builder/vocabulary.ts";
-import { initialState } from "../src/core/engine.ts";
+import { initialState, Match, verifyReplay } from "../src/core/engine.ts";
 import { evaluateWin, validateSpec } from "../src/core/validate.ts";
 import { skirmishSpec } from "../src/skirmish/spec.ts";
 import type { GameSpec } from "../src/core/types.ts";
@@ -67,6 +67,11 @@ test("vocabulary promotion pin: every IMPLEMENTED kind is genuinely evaluated", 
       const s = initialState(spec);
       s.tick = 1;
       assert.notEqual(evaluateWin(s, spec), null, kind);
+    } else if (kind === "score_target") {
+      const spec = withWin(skirmishSpec, [{ id: "w", kind: "score_target", params: { target: 1 } }]);
+      const s = initialState(spec);
+      s.scores.human = 1;
+      assert.equal(evaluateWin(s, spec), "human", kind);
     } else {
       assert.fail(`IMPLEMENTED kind "${kind}" has no evaluation pin — add one before promoting it`);
     }
@@ -120,6 +125,72 @@ test("gate rejects a unit STARTING on the goal (instant-win degeneracy)", async 
   if (r.ok) return;
   assert.equal(r.stage, "playability");
   assert.match(r.errors[0], /already decided/);
+});
+
+// ---------- score_target: the first ACCRUAL-STATE mechanic ----------------------
+
+const firstBlood = JSON.parse(readFileSync("examples/first-blood.json", "utf8")) as GameSpec;
+
+test("kills accrue score in state via the live killScore param (real Match)", () => {
+  const m = new Match(firstBlood, "score-seed");
+  // h1 (2.0 atk) needs two hits on a1 (4.0 hp) — teleport them adjacent via legal moves
+  // is slow; instead drive attacks directly through legality by placing a duel spec.
+  // Simpler: craft adjacency in a clone.
+  const adj = structuredClone(firstBlood);
+  adj.entities[0].pos = { x: 3, y: 3 }; // h1
+  adj.entities[2].pos = { x: 3, y: 4 }; // a1 adjacent
+  const m2 = new Match(adj, "score-seed");
+  // Two attacks kill a1 (hp 4.0 vs atk 2.0 + variance 0..1).
+  for (let i = 0; i < 4 && m2.getState().winner === null; i++) {
+    m2.submit({ type: "attack", actor: "human", params: { entity: "h1", target: "a1" } });
+    m2.tick();
+  }
+  const s = m2.getState();
+  assert.equal(s.entities.a1.alive, false);
+  assert.equal(s.scores.human, 1); // one kill × killScore 1
+  assert.equal(s.winner, "human"); // First Blood: target 1 reached
+  // The full thing replays — scores included in state equality.
+  const v = verifyReplay(adj, m2.transcript(), s);
+  assert.equal(v.ok, true);
+  assert.equal(m2.transcript().log.length > 0, true);
+  void m; // first match unused beyond construction
+});
+
+test("scored event is emitted and totals are deterministic", () => {
+  const adj = structuredClone(firstBlood);
+  adj.entities[0].pos = { x: 3, y: 3 };
+  adj.entities[2].pos = { x: 3, y: 4 };
+  const run = (seed: string) => {
+    const m = new Match(adj, seed);
+    for (let i = 0; i < 4 && m.getState().winner === null; i++) {
+      m.submit({ type: "attack", actor: "human", params: { entity: "h1", target: "a1" } });
+      m.tick();
+    }
+    return m.getState();
+  };
+  assert.deepEqual(run("same"), run("same")); // identical incl. scores
+});
+
+test("validateSpec rejects malformed/unwinnable score_target specs", () => {
+  // target < 1
+  const bad1 = withWin(firstBlood, [{ id: "w", kind: "score_target", params: { target: 0 } }]);
+  assert.equal(validateSpec(bad1).ok, false);
+  // no killScore source
+  const bad2 = structuredClone(firstBlood);
+  delete bad2.rules.params.killScore;
+  assert.equal(validateSpec(bad2).ok, false);
+  // editable killScore that can reach 0 (editable-to-unwinnable)
+  const bad3 = structuredClone(firstBlood);
+  bad3.rules.editable = { killScore: { min: 0, max: 2, editableBy: ["human"] } };
+  assert.equal(validateSpec(bad3).ok, false);
+  // unachievable target (more points than available kills can yield)
+  const bad4 = withWin(firstBlood, [{ id: "w", kind: "score_target", params: { target: 99 } }]);
+  assert.equal(validateSpec(bad4).ok, false);
+});
+
+test("gate accepts First Blood (score_target game end to end)", async () => {
+  const r = await gateSpec(structuredClone(firstBlood));
+  assert.equal(r.ok, true, !r.ok ? `${r.stage}: ${r.errors.join("; ")}` : "");
 });
 
 test("gate accepts a survival game", async () => {

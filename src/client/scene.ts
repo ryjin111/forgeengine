@@ -330,6 +330,7 @@ export class BoardScene extends Phaser.Scene {
       : ev.kind === "rule_edited" ? `⚙ ${ev.rule}: ${ev.from} → ${ev.to}`
       : ev.kind === "passed" ? `${ev.actor} passed`
       : ev.kind === "rejected" ? `✗ ${ev.action?.actor ?? "?"} ${ev.action?.type ?? "?"} rejected (${ev.reason})`
+      : ev.kind === "scored" ? `★ ${ev.actor} +${ev.points} (score ${ev.total})`
       : `🏆 ${ev.winner} wins`;
     const div = document.createElement("div");
     div.className = "row";

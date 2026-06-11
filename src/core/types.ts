@@ -2,8 +2,9 @@
 // The SINGLE source of truth the engine loads is GameSpec. Editors (human) and
 // builder tools (agent) both emit this exact shape — one format, no fork.
 
-/** Engine + spec versioning. Reserved now so logs don't silently rot (migration deferred). */
-export const ENGINE_VERSION = "0.1.0" as const;
+/** Engine + spec versioning. Bumped on any State-shape change so old transcripts
+ *  fail-closed at replay instead of silently mis-replaying (0.2.0: State.scores). */
+export const ENGINE_VERSION = "0.2.0" as const;
 
 /** A fixed-point scalar (Q16.16). Stored as a plain integer = value * 65536.
  *  State math is integer/fixed-point ONLY — never JS floats — so the log is
@@ -117,8 +118,10 @@ export interface WinCondition {
    *  - reach_cell: first actor to get a living unit onto params {x, y} wins (racing/objective).
    *  - survive_turns: at tick >= params {ticks}, sole actor with living units wins;
    *    several (or zero) survivors = draw (survival/endurance).
+   *  - score_target: first actor (spec.actors order breaks same-tick ties) whose score
+   *    reaches params {target} wins (deathmatch/points — kills × killScore rule param).
    *  - custom: reserved, not implemented — the kit gate rejects it. */
-  kind: "eliminate_all" | "reach_cell" | "survive_turns" | "custom";
+  kind: "eliminate_all" | "reach_cell" | "survive_turns" | "score_target" | "custom";
   params?: Record<string, number>;
 }
 
@@ -131,6 +134,9 @@ export interface State {
   entities: Record<EntityId, EntityState>;
   /** Live copy of editable rule params (seeded from spec, then mutated by edit_rule). */
   ruleParams: Record<RuleId, number>;
+  /** Per-actor points (integers). Accrued by score sources — today: kills award the
+   *  live `killScore` rule param to the attacker's owner. Read by score_target wins. */
+  scores: Record<ActorId, number>;
   /** Set once a win condition fires. */
   winner: ActorId | "draw" | null;
 }
@@ -195,6 +201,7 @@ export type GameEvent =
   | { kind: "attacked"; attacker: EntityId; target: EntityId; damage: number; targetHpAfter: number }
   | { kind: "died"; entity: EntityId }
   | { kind: "rule_edited"; rule: RuleId; from: number; to: number }
+  | { kind: "scored"; actor: ActorId; points: number; total: number }
   | { kind: "passed"; actor: ActorId }
   | { kind: "rejected"; action: Action; reason: string } // illegal → state unchanged
   | { kind: "win"; winner: ActorId | "draw" };

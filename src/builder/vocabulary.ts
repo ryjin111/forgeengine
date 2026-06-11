@@ -28,6 +28,7 @@ export const IMPLEMENTED_WIN_KINDS: readonly string[] = [
   "eliminate_all",
   "reach_cell",
   "survive_turns",
+  "score_target",
 ];
 
 /** Reserved in the spec format but NOT yet runnable — rejected by the gate. */

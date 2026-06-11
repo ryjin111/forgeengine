@@ -48,9 +48,18 @@ export function step(state: State, spec: GameSpec, action: Action, ctx: StepCtx)
       const dead = (newHp as number) <= 0;
       if (dead) newHp = fixed.fromInt(0);
       const nextTarget = { ...target, stats: { ...target.stats, hp: newHp }, alive: !dead };
+      // Score source: a kill awards the LIVE killScore rule param (integer points,
+      // 0/absent = scoreless game) to the attacker's owner. Deterministic — reads
+      // params already in state, no RNG; replay reproduces scores from the log.
+      const killScore = dead ? Math.trunc(state.ruleParams.killScore ?? 0) : 0;
+      const nextScores =
+        killScore > 0
+          ? { ...state.scores, [ent.owner]: (state.scores[ent.owner] ?? 0) + killScore }
+          : state.scores;
       const next: State = {
         ...state,
         entities: { ...state.entities, [target.id]: nextTarget },
+        scores: nextScores,
       };
       const events: GameEvent[] = [
         {
@@ -62,6 +71,14 @@ export function step(state: State, spec: GameSpec, action: Action, ctx: StepCtx)
         },
       ];
       if (dead) events.push({ kind: "died", entity: target.id });
+      if (killScore > 0) {
+        events.push({
+          kind: "scored",
+          actor: ent.owner,
+          points: killScore,
+          total: nextScores[ent.owner]!,
+        });
+      }
       return { state: next, events };
     }
 

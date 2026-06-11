@@ -135,10 +135,13 @@ export function initialState(spec: GameSpec): State {
       alive: true,
     };
   }
+  const scores: State["scores"] = {};
+  for (const a of spec.actors) scores[a.id] = 0;
   return {
     tick: 0,
     entities,
     ruleParams: { ...spec.rules.params },
+    scores,
     winner: null,
   };
 }

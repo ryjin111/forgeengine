@@ -1,0 +1,49 @@
+{
+  "specVersion": 1,
+  "meta": {
+    "name": "First Blood",
+    "authors": [
+      "AI-generated (composed from the ForgeEngine vocabulary, validated by the safety gate)"
+    ]
+  },
+  "map": {
+    "width": 7,
+    "height": 7
+  },
+  "entityTypes": {
+    "duelist": {
+      "stats": { "hp": 262144, "attack": 131072 },
+      "assetKey": "duelist_sprite"
+    }
+  },
+  "entities": [
+    { "id": "h1", "type": "duelist", "owner": "human", "pos": { "x": 1, "y": 1 } },
+    { "id": "h2", "type": "duelist", "owner": "human", "pos": { "x": 1, "y": 5 } },
+    { "id": "a1", "type": "duelist", "owner": "agent", "pos": { "x": 5, "y": 1 } },
+    { "id": "a2", "type": "duelist", "owner": "agent", "pos": { "x": 5, "y": 5 } }
+  ],
+  "actors": [
+    { "id": "human", "kind": "human" },
+    { "id": "agent", "kind": "agent" }
+  ],
+  "rules": {
+    "allowedActions": ["move", "attack", "pass"],
+    "params": {
+      "moveRange": 2,
+      "attackRange": 1,
+      "attackVariance": 1,
+      "killScore": 1
+    }
+  },
+  "assets": {
+    "duelist_sprite": { "uri": "mythosforge://assets/duelist_sprite", "kind": "sprite" }
+  },
+  "winConditions": [
+    { "id": "first_blood", "kind": "score_target", "params": { "target": 1 } }
+  ],
+  "turnModel": {
+    "actionsPerActorPerTurn": 1,
+    "resolution": "sequential",
+    "order": ["human", "agent"]
+  }
+}

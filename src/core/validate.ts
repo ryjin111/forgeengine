@@ -71,6 +71,41 @@ export function validateSpec(spec: GameSpec): ValidationResult {
         errors.push(`winConditions.${cond.id}: survive_turns requires integer params ticks >= 1`);
       }
     }
+    if (cond.kind === "score_target") {
+      const target = cond.params?.target;
+      if (target === undefined || !Number.isInteger(target) || target < 1) {
+        errors.push(`winConditions.${cond.id}: score_target requires integer params target >= 1`);
+        continue;
+      }
+      // Static winnability for today's only score source (kills × killScore):
+      // the target must be ACHIEVABLE by someone, and rule-editing must not be
+      // able to switch scoring off mid-game.
+      const killScore = spec.rules.params.killScore;
+      if (killScore === undefined || !Number.isInteger(killScore) || killScore < 1) {
+        errors.push(
+          `winConditions.${cond.id}: score_target needs rules.params.killScore >= 1 (the only score source today)`,
+        );
+        continue;
+      }
+      const editPolicy = spec.rules.editable?.killScore;
+      if (editPolicy && editPolicy.min < 1) {
+        errors.push(
+          `winConditions.${cond.id}: editable killScore min must stay >= 1 or the game can be edited unwinnable`,
+        );
+      }
+      // Max points an actor can earn = units owned by everyone else × killScore.
+      const unitsByOwner: Record<string, number> = {};
+      for (const e of spec.entities) unitsByOwner[e.owner] = (unitsByOwner[e.owner] ?? 0) + 1;
+      const total = spec.entities.length;
+      const achievable = spec.actors.some(
+        (a) => (total - (unitsByOwner[a.id] ?? 0)) * killScore >= target,
+      );
+      if (!achievable) {
+        errors.push(
+          `winConditions.${cond.id}: target ${target} is unachievable — no actor can earn that many points from the available kills`,
+        );
+      }
+    }
   }
   return { ok: errors.length === 0, errors };
 }
@@ -243,6 +278,16 @@ export function evaluateWin(state: State, spec: GameSpec): ActorIdResult {
         const survivors = spec.actors.filter((a) => living.has(a.id));
         if (survivors.length === 1) return survivors[0]!.id;
         return "draw"; // several (or zero) made it to the deadline — endurance draw
+      }
+    }
+    if (cond.kind === "score_target") {
+      // First actor (in spec.actors order — the deterministic tie-break for
+      // same-tick finishes) whose score has reached the target wins.
+      const target = cond.params?.target;
+      if (target !== undefined) {
+        for (const a of spec.actors) {
+          if ((state.scores[a.id] ?? 0) >= target) return a.id;
+        }
       }
     }
     // TODO(gameplay): custom predicates.
